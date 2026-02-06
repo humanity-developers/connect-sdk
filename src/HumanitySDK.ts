@@ -1,4 +1,6 @@
 import api, { HttpError } from './sdk-base';
+import { healthcheck as healthEndpoint } from './sdk-base/functional/health/index';
+import { readiness as readinessEndpoint } from './sdk-base/functional/ready/index';
 
 import type { RevokeRequest as OauthRevokeRequest } from '@structures/RevokeRequest';
 import type { RevokeResponse as OauthRevokeResponse } from '@structures/RevokeResponse';
@@ -439,6 +441,22 @@ export class HumanitySDK {
     this.configurationCacheTimestamp = undefined;
   }
 
+  async healthcheck(): Promise<HealthLivenessResponse & { rateLimit?: RateLimitInfo }> {
+    const connection = this.connectionFactory.createRootConnection();
+    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+      healthEndpoint(conn),
+    );
+    return rateLimit ? { ...data, rateLimit } : data;
+  }
+
+  async readiness(): Promise<HealthReadinessResponse & { rateLimit?: RateLimitInfo }> {
+    const connection = this.connectionFactory.createRootConnection();
+    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+      readinessEndpoint(conn),
+    );
+    return rateLimit ? { ...data, rateLimit } : data;
+  }
+
   private composeAuthorizationScopes(scopes: string[]): string[] {
     const normalizedScopes = scopes.map((scope) => scope.trim()).filter(Boolean);
     const directScopes = new Set<string>();
@@ -567,7 +585,6 @@ export class HumanitySDK {
         rateLimit: capturedHeaders ? this.extractRateLimit(capturedHeaders) : undefined,
       };
     } catch (error) {
-      this.rethrowAsHumanityError(error);
       throw error as never;
     }
   }

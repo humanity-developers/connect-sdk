@@ -23,7 +23,7 @@ export class HttpConnectionFactory {
     headers?: Record<string, string>,
   ): IConnection {
     return this.createConnection({
-      baseUrl: this.join(this.environment.apiBaseUrl, "v2"),
+      baseUrl: this.environment.apiBaseUrl,
       accessToken,
       headers,
     });
@@ -90,10 +90,6 @@ export class HttpConnectionFactory {
         : undefined,
       fetch: this.fetch,
     };
-  }
-
-  private join(base: string, path: string): string {
-    return `${stripTrailingSlash(base)}/${stripLeadingSlash(path)}`;
   }
 }
 

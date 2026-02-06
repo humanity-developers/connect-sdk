@@ -126,7 +126,7 @@ describe('HumanitySDK client user token integration', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(HumanityError);
         const humanityError = error as HumanityError;
-        expect(humanityError.httpStatus).toBe(401);
+        expect(humanityError.statusCode).toBe(401);
       }
     });
 
@@ -141,7 +141,7 @@ describe('HumanitySDK client user token integration', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(HumanityError);
         const humanityError = error as HumanityError;
-        expect(humanityError.httpStatus).toBe(404);
+        expect(humanityError.statusCode).toBe(404);
       }
     });
 
@@ -163,7 +163,7 @@ describe('HumanitySDK client user token integration', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(HumanityError);
         const humanityError = error as HumanityError;
-        expect(humanityError.httpStatus).toBe(403);
+        expect(humanityError.statusCode).toBe(403);
       }
     });
 
@@ -185,7 +185,7 @@ describe('HumanitySDK client user token integration', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(HumanityError);
         const humanityError = error as HumanityError;
-        expect(humanityError.httpStatus).toBe(403);
+        expect(humanityError.statusCode).toBe(403);
       }
     });
   });
@@ -205,7 +205,7 @@ describe('HumanitySDK client user token integration', () => {
       });
 
       // Use the issued token to verify a preset
-      const presetResult = await sdk.verifyPreset(env.testPresetKey, tokenResult.accessToken);
+      const presetResult = await sdk.verifyPreset({ preset: env.testPresetKey, accessToken: tokenResult.accessToken });
       expect(presetResult.preset).toBe(env.testPresetKey);
       expect(typeof presetResult.status).toBe('string');
     });
