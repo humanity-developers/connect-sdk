@@ -1,6 +1,6 @@
 {
   "name": "@humanity-org/connect-sdk",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "TypeScript SDK for the Humanity Public Dev API",
   "license": "MIT",
   "author": "Humanity, Inc.",
@@ -21,7 +21,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "postbuild": "tsc-alias -p tsconfig.json",
-    "test:integration": "jest --config jest.config.ts --runInBand"
+    "test:integration": "jest --config jest.config.ts --runInBand",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@nestia/fetcher": "^9.0.1",
