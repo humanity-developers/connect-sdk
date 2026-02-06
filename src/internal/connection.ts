@@ -20,7 +20,7 @@ export class HttpConnectionFactory {
 
   createCoreConnection(accessToken?: string, headers?: Record<string, string>): IConnection {
     return this.createConnection({
-      baseUrl: this.join(this.environment.apiBaseUrl, 'v2'),
+      baseUrl: this.environment.apiBaseUrl,
       accessToken,
       headers,
     });

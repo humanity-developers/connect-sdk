@@ -1,4 +1,4 @@
-export type EnvironmentName = 'production' | 'staging' | 'testnet';
+export type EnvironmentName = 'production' | 'sandbox';
 
 export interface EnvironmentDescriptor {
   name: EnvironmentName | string;
@@ -12,15 +12,10 @@ const DEFAULT_ENVIRONMENTS: Record<EnvironmentName, EnvironmentDescriptor> = {
     apiBaseUrl: 'https://api.humanity.org',
     discoveryBaseUrl: 'https://api.humanity.org',
   },
-  staging: {
-    name: 'staging',
-    apiBaseUrl: 'https://api-staging.humanity.org',
-    discoveryBaseUrl: 'https://api-staging.humanity.org',
-  },
-  testnet: {
-    name: 'testnet',
-    apiBaseUrl: 'https://api-testnet.humanity.org',
-    discoveryBaseUrl: 'https://api-testnet.humanity.org',
+  sandbox: {
+    name: 'sandbox',
+    apiBaseUrl: 'https://api.sandbox.humanity.org',
+    discoveryBaseUrl: 'https://api.sandbox.humanity.org',
   },
 };
 
