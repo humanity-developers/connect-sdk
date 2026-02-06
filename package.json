@@ -1,6 +1,6 @@
 {
   "name": "@humanity-org/connect-sdk",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "TypeScript SDK for the Humanity Public Dev API",
   "license": "MIT",
   "author": "Humanity, Inc.",

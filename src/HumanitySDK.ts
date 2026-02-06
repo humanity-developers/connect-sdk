@@ -1,10 +1,7 @@
 import api, { HttpError } from './sdk-base';
-import { healthcheck as healthEndpoint } from './sdk-base/functional/health/index';
-import { readiness as readinessEndpoint } from './sdk-base/functional/ready/index';
 
 import type { RevokeRequest as OauthRevokeRequest } from '@structures/RevokeRequest';
 import type { RevokeResponse as OauthRevokeResponse } from '@structures/RevokeResponse';
-import type { TokenRequest as OauthTokenRequest } from '@structures/TokenRequest';
 import type { TokenResponse as OauthTokenResponse } from '@structures/TokenResponse';
 import type { ClientUserTokenRequest as OauthClientUserTokenRequest } from '@structures/ClientUserTokenRequest';
 import type { ClientUserTokenResponse as OauthClientUserTokenResponse } from '@structures/ClientUserTokenResponse';
@@ -12,10 +9,17 @@ import type { VerifyPresetsRequest as PresetsVerifyRequest } from '@structures/V
 import type { VerifyPresetsResponse as PresetsVerifyResponse } from '@structures/VerifyPresetsResponse';
 import type { IConnection } from '@nestia/fetcher';
 import type { AuthorizationsQuery as StatusAuthorizationsQuery } from '@structures/AuthorizationsQuery';
-import type { CredentialsQuery as StatusCredentialsQuery } from '@structures/CredentialsQuery';
+import type { AuthorizationsResponse as StatusAuthorizationsResponse } from '@structures/AuthorizationsResponse';
 import type { HpConfiguration as DiscoveryConfiguration } from '@structures/HpConfiguration';
 import type { HealthLivenessResponse } from '@structures/HealthLivenessResponse';
 import type { HealthReadinessResponse } from '@structures/HealthReadinessResponse';
+import type { QueryEvaluateRequest as SdkQueryEvaluateRequest } from '@structures/QueryEvaluateRequest';
+import type { PredicateEvaluateResponse as SdkPredicateEvaluateResponse } from '@structures/PredicateEvaluateResponse';
+import type { ProjectionEvaluateResponse as SdkProjectionEvaluateResponse } from '@structures/ProjectionEvaluateResponse';
+import type { CredentialsQuery as StatusCredentialsQuery, CredentialsResponse as StatusCredentialsResponse } from '@utils/ts-types/status';
+
+// TokenRequest is inlined by nestia as a discriminated union in oauth.token.Body
+type OauthTokenRequest = api.functional.oauth.token.Body;
 import { PresetRegistry, type DeveloperPresetKey } from './adapters/preset-registry';
 import { PresetsAdapter, type PresetBatchResult, type PresetCheckResult } from './adapters/presets.adapter';
 import {
@@ -123,6 +127,38 @@ export interface PollAuthorizationUpdatesOptions {
   status?: 'revoked' | 'active';
   limit?: number;
 }
+
+// ============================================
+// Query Engine Types
+// ============================================
+
+/**
+ * Query type from the SDK structures.
+ */
+export type Query = SdkQueryEvaluateRequest['query'];
+
+/**
+ * Options for query evaluation.
+ */
+export interface QueryEvaluateOptions {
+  accessToken: string;
+  query: Query;
+}
+
+/**
+ * Result of a predicate query evaluation.
+ */
+export type QueryPredicateResult = Omit<SdkPredicateEvaluateResponse, 'type'>;
+
+/**
+ * Result of a projection query evaluation.
+ */
+export type QueryProjectionResult = Omit<SdkProjectionEvaluateResponse, 'type'>;
+
+/**
+ * Union type for any query result.
+ */
+export type QueryEvaluateResult = SdkPredicateEvaluateResponse | SdkProjectionEvaluateResponse;
 
 /**
  * Options for obtaining an access token for a user who has already authorized
@@ -389,7 +425,7 @@ export class HumanitySDK {
     const presetName = this.scopesAdapter.toPresetName(options.preset);
     const connection = this.connectionFactory.createCoreConnection(options.accessToken);
     const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
-      api.functional.presets.getPreset(conn, presetName),
+      api.functional.v2.presets.getPreset(conn, presetName),
     );
     const wrapped = { results: [data], errors: [] } as PresetsVerifyResponse;
     return this.presetsAdapter.fromSingleResponse(wrapped, { rateLimit });
@@ -413,9 +449,32 @@ export class HumanitySDK {
     };
     const connection = this.connectionFactory.createCoreConnection(options.accessToken);
     const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
-      api.functional.presets.batch(conn, body),
+      api.functional.v2.presets.batch(conn, body),
     );
-    return this.presetsAdapter.fromBatchResponse(data, { rateLimit });
+    return this.presetsAdapter.fromBatchResponse(data as PresetsVerifyResponse, { rateLimit });
+  }
+
+  async pollCredentialUpdates(_options: PollCredentialUpdatesOptions): Promise<CredentialUpdates> {
+    // TODO: The /v2/credentials polling endpoint is not yet implemented in the API.
+    // This method will be functional once the endpoint is added.
+    throw new Error('pollCredentialUpdates is not yet available — the /v2/credentials endpoint is pending implementation');
+  }
+
+  async pollAuthorizationUpdates(options: PollAuthorizationUpdatesOptions): Promise<AuthorizationUpdates> {
+    if (!options.accessToken) {
+      throw new Error('HumanitySDK.pollAuthorizationUpdates requires an accessToken');
+    }
+    this.validateLimit(options.limit);
+    const query: StatusAuthorizationsQuery = this.statusAdapter.normalizeAuthorizationsQuery({
+      status: options.status,
+      updated_since: this.toIsoString(options.updatedSince),
+      limit: options.limit,
+    });
+    const connection = this.connectionFactory.createCoreConnection(options.accessToken);
+    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+      api.functional.v2.authorizations(conn, query),
+    );
+    return this.statusAdapter.fromAuthorizationsResponse(data as StatusAuthorizationsResponse, { rateLimit });
   }
 
   async getConfiguration(forceRefresh = false): Promise<DiscoveryConfiguration> {
@@ -441,20 +500,107 @@ export class HumanitySDK {
     this.configurationCacheTimestamp = undefined;
   }
 
-  async healthcheck(): Promise<HealthLivenessResponse & { rateLimit?: RateLimitInfo }> {
-    const connection = this.connectionFactory.createRootConnection();
-    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
-      healthEndpoint(conn),
-    );
-    return rateLimit ? { ...data, rateLimit } : data;
+  async healthcheck(): Promise<HealthLivenessResponse> {
+    const connection = this.connectionFactory.createHealthConnection();
+    try {
+      return await api.functional.health.healthcheck(connection) as HealthLivenessResponse;
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
   }
 
-  async readiness(): Promise<HealthReadinessResponse & { rateLimit?: RateLimitInfo }> {
-    const connection = this.connectionFactory.createRootConnection();
-    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
-      readinessEndpoint(conn),
-    );
-    return rateLimit ? { ...data, rateLimit } : data;
+  async readiness(): Promise<HealthReadinessResponse> {
+    const connection = this.connectionFactory.createHealthConnection();
+    try {
+      return await api.functional.ready.readiness(connection) as HealthReadinessResponse;
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
+  }
+
+  // ============================================
+  // Query Engine Methods
+  // ============================================
+
+  /**
+   * Evaluate a predicate query against the user's credentials.
+   * Returns a boolean result based on the query check.
+   *
+   * @example
+   * const result = await sdk.evaluatePredicateQuery({
+   *   accessToken: 'user_access_token',
+   *   query: { check: { claim: 'identity.age', operator: '>=', value: 18 } }
+   * });
+   * console.log(result.passed); // true or false
+   */
+  async evaluatePredicateQuery(options: QueryEvaluateOptions): Promise<QueryPredicateResult> {
+    if (!options.accessToken) {
+      throw new Error('HumanitySDK.evaluatePredicateQuery requires an accessToken');
+    }
+    const connection = this.connectionFactory.createCoreConnection(options.accessToken);
+    try {
+      const response = await api.functional.v2.queries.evaluate(connection, { query: options.query });
+      if (response.type !== 'predicate') {
+        throw new Error('Expected predicate response but got projection');
+      }
+      return {
+        passed: response.passed,
+        evaluatedAt: response.evaluatedAt,
+        expiresAt: response.expiresAt,
+        evidence: response.evidence,
+      };
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
+  }
+
+  /**
+   * Evaluate a projection query to extract data from user's credentials.
+   * Returns extracted claim values.
+   *
+   * @example
+   * const result = await sdk.evaluateProjectionQuery({
+   *   accessToken: 'user_access_token',
+   *   query: { projections: [{ claim: 'identity.email', lens: 'pluck' }] }
+   * });
+   * console.log(result.data); // { 'identity.email': 'user@example.com' }
+   */
+  async evaluateProjectionQuery(options: QueryEvaluateOptions): Promise<QueryProjectionResult> {
+    if (!options.accessToken) {
+      throw new Error('HumanitySDK.evaluateProjectionQuery requires an accessToken');
+    }
+    const connection = this.connectionFactory.createCoreConnection(options.accessToken);
+    try {
+      const response = await api.functional.v2.queries.evaluate(connection, { query: options.query });
+      if (response.type !== 'projection') {
+        throw new Error('Expected projection response but got predicate');
+      }
+      return {
+        data: response.data,
+        evaluatedAt: response.evaluatedAt,
+        expiresAt: response.expiresAt,
+        claimsUsed: response.claimsUsed,
+      };
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
+  }
+
+  /**
+   * Evaluate any query (predicate or projection) against the user's credentials.
+   * Automatically handles the response type.
+   */
+  async evaluateQuery(options: QueryEvaluateOptions): Promise<QueryEvaluateResult> {
+    if (!options.accessToken) {
+      throw new Error('HumanitySDK.evaluateQuery requires an accessToken');
+    }
+    const connection = this.connectionFactory.createCoreConnection(options.accessToken);
+    try {
+      const response = await api.functional.v2.queries.evaluate(connection, { query: options.query });
+      return response;
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
   }
 
   private composeAuthorizationScopes(scopes: string[]): string[] {
@@ -585,6 +731,7 @@ export class HumanitySDK {
         rateLimit: capturedHeaders ? this.extractRateLimit(capturedHeaders) : undefined,
       };
     } catch (error) {
+      this.rethrowAsHumanityError(error);
       throw error as never;
     }
   }

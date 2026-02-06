@@ -14,6 +14,12 @@ export {
   type PollAuthorizationUpdatesOptions,
   type ClientUserTokenOptions,
   type ClientUserTokenResult,
+  // Query Engine types
+  type Query,
+  type QueryEvaluateOptions,
+  type QueryPredicateResult,
+  type QueryProjectionResult,
+  type QueryEvaluateResult,
   HttpError,
 } from './HumanitySDK';
 
@@ -36,3 +42,19 @@ export { type RateLimitInfo } from './types/rate-limit';
 
 export { HumanityError } from './types/humanity-error';
 
+// Preset types
+export {
+  PresetScope,
+  type PresetName,
+  type PresetValueType,
+  PRESET_SCOPE_MAP,
+  type ConsentPresetsRequest,
+  type ConsentPresetsResponse,
+  type PresetResult,
+  type PresetValue,
+  type VerifyPresetResponse,
+  type VerifyPresetsRequest,
+  type VerifyPresetsResponse,
+  type PresetError,
+  ErrorCode,
+} from './utils/ts-types/presets';

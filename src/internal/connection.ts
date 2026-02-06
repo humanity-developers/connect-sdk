@@ -1,5 +1,5 @@
-import type { IConnection } from "@nestia/fetcher";
-import type { EnvironmentDescriptor } from "./environment";
+import type { IConnection } from '@nestia/fetcher';
+import type { EnvironmentDescriptor } from './environment';
 
 export interface ConnectionFactoryOptions {
   environment: EnvironmentDescriptor;
@@ -18,12 +18,9 @@ export class HttpConnectionFactory {
     this.defaultHeaders = options.defaultHeaders ?? {};
   }
 
-  createCoreConnection(
-    accessToken?: string,
-    headers?: Record<string, string>,
-  ): IConnection {
+  createCoreConnection(accessToken?: string, headers?: Record<string, string>): IConnection {
     return this.createConnection({
-      baseUrl: this.environment.apiBaseUrl,
+      baseUrl: this.join(this.environment.apiBaseUrl, 'v2'),
       accessToken,
       headers,
     });
@@ -43,10 +40,7 @@ export class HttpConnectionFactory {
     });
   }
 
-  createRootConnection(
-    accessToken?: string,
-    headers?: Record<string, string>,
-  ): IConnection {
+  createRootConnection(accessToken?: string, headers?: Record<string, string>): IConnection {
     return this.createConnection({
       baseUrl: this.environment.apiBaseUrl,
       accessToken,
@@ -85,18 +79,20 @@ export class HttpConnectionFactory {
 
     return {
       host: stripTrailingSlash(baseUrl),
-      headers: Object.keys(resolvedHeaders).length
-        ? resolvedHeaders
-        : undefined,
+      headers: Object.keys(resolvedHeaders).length ? resolvedHeaders : undefined,
       fetch: this.fetch,
     };
+  }
+
+  private join(base: string, path: string): string {
+    return `${stripTrailingSlash(base)}/${stripLeadingSlash(path)}`;
   }
 }
 
 function stripTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+  return value.endsWith('/') ? value.slice(0, -1) : value;
 }
 
 function stripLeadingSlash(value: string): string {
-  return value.startsWith("/") ? value.slice(1) : value;
+  return value.startsWith('/') ? value.slice(1) : value;
 }

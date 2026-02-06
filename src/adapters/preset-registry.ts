@@ -4,19 +4,22 @@ import { camelToSnake, snakeToCamel } from '../internal/casing';
 
 export type DeveloperPresetKey = string;
 
+export type PresetValueType =
+  | 'boolean'
+  | 'string'
+  | 'number'
+  | 'integer'
+  | 'date'
+  | 'datetime'
+  | 'array'
+  | 'enum'
+  | 'bundled';
+
 export interface PresetDescriptor {
   developerKey: DeveloperPresetKey;
   presetName: string;
   scope: string;
-  type?: | "string"
-  | "number"
-  | "boolean"
-  | "integer"
-  | "date"
-  | "datetime"
-  | "array"
-  | "enum"
-  | "bundled";
+  type?: PresetValueType;
   consentText?: string;
   description?: string;
   impliedScopes?: string[];

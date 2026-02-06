@@ -8,7 +8,6 @@ export type HpConfiguration = {
   revoke_endpoint: string;
   userinfo_endpoint: string;
   jwks_uri: string;
-  consent_presets_endpoint: string;
   presets_endpoint: string;
   presets_batch_endpoint: string;
   credentials_endpoint: string;

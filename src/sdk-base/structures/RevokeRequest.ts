@@ -7,6 +7,6 @@ export type RevokeRequest = {
     | "refresh_token"
     | "access_token";
   authorization_id?: undefined | string;
-  cascade?: undefined | "true" | "false" | "1" | "0" | boolean;
+  cascade?: undefined | "0" | "true" | "false" | "1" | boolean;
   client_id?: undefined | string;
 };

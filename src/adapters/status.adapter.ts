@@ -1,8 +1,6 @@
 import type { AuthorizationsQuery as StatusAuthorizationsQuery } from '@structures/AuthorizationsQuery';
 import type { AuthorizationsResponse as StatusAuthorizationsResponse } from '@structures/AuthorizationsResponse';
-import type { CredentialsQuery as StatusCredentialsQuery } from '@structures/CredentialsQuery';
-import type { CredentialsResponse as StatusCredentialsResponse } from '@structures/CredentialsResponse';
-import type { AuthorizationUpdate, CredentialItem } from '@utils/ts-types/status';
+import type { CredentialsQuery as StatusCredentialsQuery, CredentialsResponse as StatusCredentialsResponse, AuthorizationUpdate, CredentialItem } from '@utils/ts-types/status';
 import type { RateLimitInfo } from '../types/rate-limit';
 import { PresetRegistry, type DeveloperPresetKey } from './preset-registry';
 
