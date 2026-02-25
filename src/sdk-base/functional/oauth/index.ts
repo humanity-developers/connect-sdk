@@ -54,6 +54,18 @@ export namespace token {
         refresh_token: string;
         client_id: string;
         scope?: undefined | string;
+      }
+    | {
+        /**
+         * RFC 7523 JWT Bearer Grant — exchange a Cognito JWT for a Humanity OAuth token
+         */
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer";
+
+        /**
+         * The Cognito JWT (id_token or access_token)
+         */
+        assertion: string;
+        client_id: string;
       };
   export type Output = TokenResponse;
 

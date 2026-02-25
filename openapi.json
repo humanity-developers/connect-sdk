@@ -12,6 +12,60 @@
     "description": "NestJS CQRS + TDD base for Humanity Public Dev API"
   },
   "paths": {
+    "/authorizations": {
+      "get": {
+        "tags": [],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "oneOf": [
+                {
+                  "const": "active"
+                },
+                {
+                  "const": "revoked"
+                }
+              ]
+            },
+            "required": false
+          },
+          {
+            "name": "updated_since",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "authorizations"
+        ],
+        "x-samchon-controller": "StatusController"
+      }
+    },
     "/presets/{preset_name}": {
       "get": {
         "tags": [],
@@ -98,6 +152,114 @@
           "list"
         ],
         "x-samchon-controller": "PresetsController"
+      }
+    },
+    "/queries/evaluate": {
+      "post": {
+        "summary": "Evaluate a query against the authenticated user's credentials",
+        "description": "Evaluate a query against the authenticated user's credentials.\nThis endpoint allows declarative queries to check user claims.",
+        "tags": [],
+        "parameters": [],
+        "requestBody": {
+          "description": "The query to evaluate",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryEvaluateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Query evaluation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PredicateEvaluateResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ProjectionEvaluateResponse"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "type",
+                    "mapping": {
+                      "predicate": "#/components/schemas/PredicateEvaluateResponse",
+                      "projection": "#/components/schemas/ProjectionEvaluateResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "queries",
+          "evaluate"
+        ],
+        "x-samchon-controller": "QueriesController"
+      }
+    },
+    "/developer/organization": {
+      "get": {
+        "description": "Get the organization for the authenticated developer",
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "developer",
+          "organization",
+          "getMyOrganization"
+        ],
+        "x-samchon-controller": "OrganizationsController"
+      },
+      "put": {
+        "description": "Update the organization name (owner only)",
+        "tags": [],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "developer",
+          "organization",
+          "updateMyOrganization"
+        ],
+        "x-samchon-controller": "OrganizationsController"
       }
     },
     "/userinfo": {
@@ -287,6 +449,27 @@
                     "required": [
                       "grant_type",
                       "refresh_token",
+                      "client_id"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "grant_type": {
+                        "const": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                        "description": "RFC 7523 JWT Bearer Grant — exchange a Cognito JWT for a Humanity OAuth token"
+                      },
+                      "assertion": {
+                        "type": "string",
+                        "description": "The Cognito JWT (id_token or access_token)"
+                      },
+                      "client_id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "grant_type",
+                      "assertion",
                       "client_id"
                     ]
                   }
@@ -556,6 +739,82 @@
   },
   "components": {
     "schemas": {
+      "AuthorizationsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthorizationUpdate"
+            }
+          },
+          "last_modified": {
+            "type": "string"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AuthorizationUpdate": {
+        "type": "object",
+        "properties": {
+          "authorization_id": {
+            "type": "string"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "app_scoped_user_id": {
+            "type": "string"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "const": "active"
+              },
+              {
+                "const": "revoked"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorization_id",
+          "organization_id",
+          "app_scoped_user_id",
+          "status",
+          "updated_at"
+        ]
+      },
+      "AuthorizationsQuery": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "const": "active"
+              },
+              {
+                "const": "revoked"
+              }
+            ]
+          },
+          "updated_since": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": []
+      },
       "PresetResult": {
         "type": "object",
         "properties": {
@@ -610,7 +869,7 @@
                 "const": "social_accounts"
               },
               {
-                "const": "wallet_addresses"
+                "const": "wallet_address"
               },
               {
                 "const": "primary_wallet_address"
@@ -619,43 +878,13 @@
                 "const": "kyc_passed"
               },
               {
-                "const": "is_high_risk"
-              },
-              {
-                "const": "kyc_level"
-              },
-              {
-                "const": "sanctions_clear"
-              },
-              {
-                "const": "tax_residency"
-              },
-              {
                 "const": "kyc_last_updated_at"
-              },
-              {
-                "const": "tax_id"
-              },
-              {
-                "const": "document_type"
-              },
-              {
-                "const": "aml_screening_passed"
-              },
-              {
-                "const": "pep_status"
               },
               {
                 "const": "document_number"
               },
               {
-                "const": "employment_status"
-              },
-              {
                 "const": "document_country"
-              },
-              {
-                "const": "geo_blocked_region"
               },
               {
                 "const": "document_expiry_date"
@@ -667,40 +896,34 @@
                 "const": "net_worth_above_100k"
               },
               {
-                "const": "total_liabilities"
-              },
-              {
                 "const": "net_worth_total"
-              },
-              {
-                "const": "tradfi_balance"
-              },
-              {
-                "const": "onchain_balance"
-              },
-              {
-                "const": "cex_balance"
-              },
-              {
-                "const": "investment_account_balance"
-              },
-              {
-                "const": "retirement_account_balance"
-              },
-              {
-                "const": "credit_card_balance"
               },
               {
                 "const": "bank_balance_total"
               },
               {
-                "const": "trading_frequency_score"
-              },
-              {
-                "const": "verified_income"
-              },
-              {
                 "const": "loan_balance_total"
+              },
+              {
+                "const": "google_connected"
+              },
+              {
+                "const": "linkedin_connected"
+              },
+              {
+                "const": "facebook_connected"
+              },
+              {
+                "const": "twitter_connected"
+              },
+              {
+                "const": "discord_connected"
+              },
+              {
+                "const": "github_connected"
+              },
+              {
+                "const": "telegram_connected"
               },
               {
                 "const": "palm_verified"
@@ -725,9 +948,7 @@
               }
             ]
           },
-          "value": {
-            "type": "boolean"
-          },
+          "value": {},
           "status": {
             "oneOf": [
               {
@@ -833,7 +1054,7 @@
                       "const": "social_accounts"
                     },
                     {
-                      "const": "wallet_addresses"
+                      "const": "wallet_address"
                     },
                     {
                       "const": "primary_wallet_address"
@@ -842,43 +1063,13 @@
                       "const": "kyc_passed"
                     },
                     {
-                      "const": "is_high_risk"
-                    },
-                    {
-                      "const": "kyc_level"
-                    },
-                    {
-                      "const": "sanctions_clear"
-                    },
-                    {
-                      "const": "tax_residency"
-                    },
-                    {
                       "const": "kyc_last_updated_at"
-                    },
-                    {
-                      "const": "tax_id"
-                    },
-                    {
-                      "const": "document_type"
-                    },
-                    {
-                      "const": "aml_screening_passed"
-                    },
-                    {
-                      "const": "pep_status"
                     },
                     {
                       "const": "document_number"
                     },
                     {
-                      "const": "employment_status"
-                    },
-                    {
                       "const": "document_country"
-                    },
-                    {
-                      "const": "geo_blocked_region"
                     },
                     {
                       "const": "document_expiry_date"
@@ -890,40 +1081,34 @@
                       "const": "net_worth_above_100k"
                     },
                     {
-                      "const": "total_liabilities"
-                    },
-                    {
                       "const": "net_worth_total"
-                    },
-                    {
-                      "const": "tradfi_balance"
-                    },
-                    {
-                      "const": "onchain_balance"
-                    },
-                    {
-                      "const": "cex_balance"
-                    },
-                    {
-                      "const": "investment_account_balance"
-                    },
-                    {
-                      "const": "retirement_account_balance"
-                    },
-                    {
-                      "const": "credit_card_balance"
                     },
                     {
                       "const": "bank_balance_total"
                     },
                     {
-                      "const": "trading_frequency_score"
-                    },
-                    {
-                      "const": "verified_income"
-                    },
-                    {
                       "const": "loan_balance_total"
+                    },
+                    {
+                      "const": "google_connected"
+                    },
+                    {
+                      "const": "linkedin_connected"
+                    },
+                    {
+                      "const": "facebook_connected"
+                    },
+                    {
+                      "const": "twitter_connected"
+                    },
+                    {
+                      "const": "discord_connected"
+                    },
+                    {
+                      "const": "github_connected"
+                    },
+                    {
+                      "const": "telegram_connected"
                     },
                     {
                       "const": "palm_verified"
@@ -1098,7 +1283,7 @@
                   "const": "social_accounts"
                 },
                 {
-                  "const": "wallet_addresses"
+                  "const": "wallet_address"
                 },
                 {
                   "const": "primary_wallet_address"
@@ -1107,43 +1292,13 @@
                   "const": "kyc_passed"
                 },
                 {
-                  "const": "is_high_risk"
-                },
-                {
-                  "const": "kyc_level"
-                },
-                {
-                  "const": "sanctions_clear"
-                },
-                {
-                  "const": "tax_residency"
-                },
-                {
                   "const": "kyc_last_updated_at"
-                },
-                {
-                  "const": "tax_id"
-                },
-                {
-                  "const": "document_type"
-                },
-                {
-                  "const": "aml_screening_passed"
-                },
-                {
-                  "const": "pep_status"
                 },
                 {
                   "const": "document_number"
                 },
                 {
-                  "const": "employment_status"
-                },
-                {
                   "const": "document_country"
-                },
-                {
-                  "const": "geo_blocked_region"
                 },
                 {
                   "const": "document_expiry_date"
@@ -1155,40 +1310,34 @@
                   "const": "net_worth_above_100k"
                 },
                 {
-                  "const": "total_liabilities"
-                },
-                {
                   "const": "net_worth_total"
-                },
-                {
-                  "const": "tradfi_balance"
-                },
-                {
-                  "const": "onchain_balance"
-                },
-                {
-                  "const": "cex_balance"
-                },
-                {
-                  "const": "investment_account_balance"
-                },
-                {
-                  "const": "retirement_account_balance"
-                },
-                {
-                  "const": "credit_card_balance"
                 },
                 {
                   "const": "bank_balance_total"
                 },
                 {
-                  "const": "trading_frequency_score"
-                },
-                {
-                  "const": "verified_income"
-                },
-                {
                   "const": "loan_balance_total"
+                },
+                {
+                  "const": "google_connected"
+                },
+                {
+                  "const": "linkedin_connected"
+                },
+                {
+                  "const": "facebook_connected"
+                },
+                {
+                  "const": "twitter_connected"
+                },
+                {
+                  "const": "discord_connected"
+                },
+                {
+                  "const": "github_connected"
+                },
+                {
+                  "const": "telegram_connected"
                 },
                 {
                   "const": "palm_verified"
@@ -1287,7 +1436,7 @@
                 "const": "social_accounts"
               },
               {
-                "const": "wallet_addresses"
+                "const": "wallet_address"
               },
               {
                 "const": "primary_wallet_address"
@@ -1296,43 +1445,13 @@
                 "const": "kyc_passed"
               },
               {
-                "const": "is_high_risk"
-              },
-              {
-                "const": "kyc_level"
-              },
-              {
-                "const": "sanctions_clear"
-              },
-              {
-                "const": "tax_residency"
-              },
-              {
                 "const": "kyc_last_updated_at"
-              },
-              {
-                "const": "tax_id"
-              },
-              {
-                "const": "document_type"
-              },
-              {
-                "const": "aml_screening_passed"
-              },
-              {
-                "const": "pep_status"
               },
               {
                 "const": "document_number"
               },
               {
-                "const": "employment_status"
-              },
-              {
                 "const": "document_country"
-              },
-              {
-                "const": "geo_blocked_region"
               },
               {
                 "const": "document_expiry_date"
@@ -1344,40 +1463,34 @@
                 "const": "net_worth_above_100k"
               },
               {
-                "const": "total_liabilities"
-              },
-              {
                 "const": "net_worth_total"
-              },
-              {
-                "const": "tradfi_balance"
-              },
-              {
-                "const": "onchain_balance"
-              },
-              {
-                "const": "cex_balance"
-              },
-              {
-                "const": "investment_account_balance"
-              },
-              {
-                "const": "retirement_account_balance"
-              },
-              {
-                "const": "credit_card_balance"
               },
               {
                 "const": "bank_balance_total"
               },
               {
-                "const": "trading_frequency_score"
-              },
-              {
-                "const": "verified_income"
-              },
-              {
                 "const": "loan_balance_total"
+              },
+              {
+                "const": "google_connected"
+              },
+              {
+                "const": "linkedin_connected"
+              },
+              {
+                "const": "facebook_connected"
+              },
+              {
+                "const": "twitter_connected"
+              },
+              {
+                "const": "discord_connected"
+              },
+              {
+                "const": "github_connected"
+              },
+              {
+                "const": "telegram_connected"
               },
               {
                 "const": "palm_verified"
@@ -1426,43 +1539,16 @@
                 "const": "identity:legal_name"
               },
               {
-                "const": "kyc:tax_residency"
-              },
-              {
-                "const": "kyc:tax_id"
-              },
-              {
                 "const": "kyc:document_number"
               },
               {
                 "const": "financial:bank_balance"
               },
               {
-                "const": "financial:credit_card_balance"
-              },
-              {
                 "const": "financial:loan_balance"
               },
               {
-                "const": "financial:retirement_balance"
-              },
-              {
-                "const": "financial:investment_balance"
-              },
-              {
                 "const": "financial:net_worth"
-              },
-              {
-                "const": "financial:verified_income"
-              },
-              {
-                "const": "financial:tradfi_balance"
-              },
-              {
-                "const": "financial:onchain_balance"
-              },
-              {
-                "const": "financial:total_liabilities"
               },
               {
                 "const": "openid"
@@ -1595,7 +1681,7 @@
                 "const": "social_accounts"
               },
               {
-                "const": "wallet_addresses"
+                "const": "wallet_address"
               },
               {
                 "const": "primary_wallet_address"
@@ -1604,43 +1690,13 @@
                 "const": "kyc_passed"
               },
               {
-                "const": "is_high_risk"
-              },
-              {
-                "const": "kyc_level"
-              },
-              {
-                "const": "sanctions_clear"
-              },
-              {
-                "const": "tax_residency"
-              },
-              {
                 "const": "kyc_last_updated_at"
-              },
-              {
-                "const": "tax_id"
-              },
-              {
-                "const": "document_type"
-              },
-              {
-                "const": "aml_screening_passed"
-              },
-              {
-                "const": "pep_status"
               },
               {
                 "const": "document_number"
               },
               {
-                "const": "employment_status"
-              },
-              {
                 "const": "document_country"
-              },
-              {
-                "const": "geo_blocked_region"
               },
               {
                 "const": "document_expiry_date"
@@ -1652,40 +1708,34 @@
                 "const": "net_worth_above_100k"
               },
               {
-                "const": "total_liabilities"
-              },
-              {
                 "const": "net_worth_total"
-              },
-              {
-                "const": "tradfi_balance"
-              },
-              {
-                "const": "onchain_balance"
-              },
-              {
-                "const": "cex_balance"
-              },
-              {
-                "const": "investment_account_balance"
-              },
-              {
-                "const": "retirement_account_balance"
-              },
-              {
-                "const": "credit_card_balance"
               },
               {
                 "const": "bank_balance_total"
               },
               {
-                "const": "trading_frequency_score"
-              },
-              {
-                "const": "verified_income"
-              },
-              {
                 "const": "loan_balance_total"
+              },
+              {
+                "const": "google_connected"
+              },
+              {
+                "const": "linkedin_connected"
+              },
+              {
+                "const": "facebook_connected"
+              },
+              {
+                "const": "twitter_connected"
+              },
+              {
+                "const": "discord_connected"
+              },
+              {
+                "const": "github_connected"
+              },
+              {
+                "const": "telegram_connected"
               },
               {
                 "const": "palm_verified"
@@ -1722,6 +1772,531 @@
           "derived"
         ],
         "description": "Full preset info including scope and category."
+      },
+      "PredicateEvaluateResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "predicate"
+          },
+          "passed": {
+            "type": "boolean",
+            "description": "Whether the query passed."
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "description": "Timestamp when the query was evaluated."
+          },
+          "evidence": {
+            "type": "object",
+            "properties": {
+              "claimsUsed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "value": {},
+                    "credentialId": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "value"
+                  ]
+                }
+              },
+              "checkResults": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "claim": {
+                      "type": "string"
+                    },
+                    "operator": {
+                      "type": "string"
+                    },
+                    "expectedValue": {},
+                    "actualValue": {},
+                    "passed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "claim",
+                    "operator",
+                    "expectedValue",
+                    "actualValue",
+                    "passed"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "claimsUsed",
+              "checkResults"
+            ],
+            "description": "Evidence collected during evaluation."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Earliest credential expiry date (if any)."
+          }
+        },
+        "required": [
+          "type",
+          "passed",
+          "evaluatedAt",
+          "evidence"
+        ],
+        "description": "Response from predicate query evaluation."
+      },
+      "ProjectionEvaluateResponse": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "projection"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Recordstringunknown.o1",
+            "description": "Extracted data from the projection query."
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "description": "Timestamp when the query was evaluated."
+          },
+          "claimsUsed": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {},
+                "credentialId": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "value"
+              ]
+            },
+            "description": "Claims used during evaluation."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "Earliest credential expiry date (if any)."
+          }
+        },
+        "required": [
+          "type",
+          "data",
+          "evaluatedAt",
+          "claimsUsed"
+        ],
+        "description": "Response from projection query evaluation."
+      },
+      "Recordstringunknown.o1": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "description": "Construct a type with a set of properties K of type T",
+        "additionalProperties": {}
+      },
+      "QueryEvaluateRequest": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "check": {
+                    "type": "object",
+                    "properties": {
+                      "claim": {
+                        "type": "string"
+                      },
+                      "operator": {
+                        "oneOf": [
+                          {
+                            "const": "=="
+                          },
+                          {
+                            "const": "!="
+                          },
+                          {
+                            "const": ">"
+                          },
+                          {
+                            "const": ">="
+                          },
+                          {
+                            "const": "<"
+                          },
+                          {
+                            "const": "<="
+                          },
+                          {
+                            "const": "in"
+                          },
+                          {
+                            "const": "notIn"
+                          },
+                          {
+                            "const": "contains"
+                          },
+                          {
+                            "const": "isDefined"
+                          },
+                          {
+                            "const": "startsWith"
+                          },
+                          {
+                            "const": "matchRegex"
+                          }
+                        ]
+                      },
+                      "value": {}
+                    },
+                    "required": [
+                      "claim",
+                      "operator"
+                    ]
+                  }
+                },
+                "required": [
+                  "check"
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/__type.o3"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "projections": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "claim": {
+                          "type": "string"
+                        },
+                        "lens": {
+                          "oneOf": [
+                            {
+                              "const": "pluck"
+                            },
+                            {
+                              "const": "pick"
+                            },
+                            {
+                              "const": "at"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "claim",
+                        "lens"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "projections"
+                ]
+              }
+            ],
+            "description": "The query to evaluate. Can be a simple check or compound policy."
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "description": "Request body for query evaluation."
+      },
+      "__type.o3": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/PredicatePolicy"
+          }
+        },
+        "required": [
+          "policy"
+        ]
+      },
+      "PredicatePolicy": {
+        "type": "object",
+        "properties": {
+          "allOf": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "check": {
+                      "type": "object",
+                      "properties": {
+                        "claim": {
+                          "type": "string"
+                        },
+                        "operator": {
+                          "oneOf": [
+                            {
+                              "const": "=="
+                            },
+                            {
+                              "const": "!="
+                            },
+                            {
+                              "const": ">"
+                            },
+                            {
+                              "const": ">="
+                            },
+                            {
+                              "const": "<"
+                            },
+                            {
+                              "const": "<="
+                            },
+                            {
+                              "const": "in"
+                            },
+                            {
+                              "const": "notIn"
+                            },
+                            {
+                              "const": "contains"
+                            },
+                            {
+                              "const": "isDefined"
+                            },
+                            {
+                              "const": "startsWith"
+                            },
+                            {
+                              "const": "matchRegex"
+                            }
+                          ]
+                        },
+                        "value": {}
+                      },
+                      "required": [
+                        "claim",
+                        "operator"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "check"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__type.o3"
+                }
+              ]
+            }
+          },
+          "anyOf": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "check": {
+                      "type": "object",
+                      "properties": {
+                        "claim": {
+                          "type": "string"
+                        },
+                        "operator": {
+                          "oneOf": [
+                            {
+                              "const": "=="
+                            },
+                            {
+                              "const": "!="
+                            },
+                            {
+                              "const": ">"
+                            },
+                            {
+                              "const": ">="
+                            },
+                            {
+                              "const": "<"
+                            },
+                            {
+                              "const": "<="
+                            },
+                            {
+                              "const": "in"
+                            },
+                            {
+                              "const": "notIn"
+                            },
+                            {
+                              "const": "contains"
+                            },
+                            {
+                              "const": "isDefined"
+                            },
+                            {
+                              "const": "startsWith"
+                            },
+                            {
+                              "const": "matchRegex"
+                            }
+                          ]
+                        },
+                        "value": {}
+                      },
+                      "required": [
+                        "claim",
+                        "operator"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "check"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__type.o3"
+                }
+              ]
+            }
+          },
+          "not": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "check": {
+                    "type": "object",
+                    "properties": {
+                      "claim": {
+                        "type": "string"
+                      },
+                      "operator": {
+                        "oneOf": [
+                          {
+                            "const": "=="
+                          },
+                          {
+                            "const": "!="
+                          },
+                          {
+                            "const": ">"
+                          },
+                          {
+                            "const": ">="
+                          },
+                          {
+                            "const": "<"
+                          },
+                          {
+                            "const": "<="
+                          },
+                          {
+                            "const": "in"
+                          },
+                          {
+                            "const": "notIn"
+                          },
+                          {
+                            "const": "contains"
+                          },
+                          {
+                            "const": "isDefined"
+                          },
+                          {
+                            "const": "startsWith"
+                          },
+                          {
+                            "const": "matchRegex"
+                          }
+                        ]
+                      },
+                      "value": {}
+                    },
+                    "required": [
+                      "claim",
+                      "operator"
+                    ]
+                  }
+                },
+                "required": [
+                  "check"
+                ]
+              },
+              {
+                "$ref": "#/components/schemas/__type.o3"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "description": "Forward declaration for recursive predicate policy schema."
+      },
+      "OrganizationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerId": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "isOwner": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "ownerId",
+          "isOwner"
+        ]
+      },
+      "UpdateOrganizationRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
       },
       "UserInfoResponse": {
         "type": "object",
@@ -2275,10 +2850,10 @@
           "token_type_hint": {
             "oneOf": [
               {
-                "const": "authorization"
+                "const": "refresh_token"
               },
               {
-                "const": "refresh_token"
+                "const": "authorization"
               },
               {
                 "const": "access_token"
@@ -2552,9 +3127,6 @@
           "jwks_uri": {
             "type": "string"
           },
-          "consent_presets_endpoint": {
-            "type": "string"
-          },
           "presets_endpoint": {
             "type": "string"
           },
@@ -2650,7 +3222,6 @@
           "revoke_endpoint",
           "userinfo_endpoint",
           "jwks_uri",
-          "consent_presets_endpoint",
           "presets_endpoint",
           "presets_batch_endpoint",
           "credentials_endpoint",
@@ -2757,7 +3328,7 @@
                 "const": "social_accounts"
               },
               {
-                "const": "wallet_addresses"
+                "const": "wallet_address"
               },
               {
                 "const": "primary_wallet_address"
@@ -2766,43 +3337,13 @@
                 "const": "kyc_passed"
               },
               {
-                "const": "is_high_risk"
-              },
-              {
-                "const": "kyc_level"
-              },
-              {
-                "const": "sanctions_clear"
-              },
-              {
-                "const": "tax_residency"
-              },
-              {
                 "const": "kyc_last_updated_at"
-              },
-              {
-                "const": "tax_id"
-              },
-              {
-                "const": "document_type"
-              },
-              {
-                "const": "aml_screening_passed"
-              },
-              {
-                "const": "pep_status"
               },
               {
                 "const": "document_number"
               },
               {
-                "const": "employment_status"
-              },
-              {
                 "const": "document_country"
-              },
-              {
-                "const": "geo_blocked_region"
               },
               {
                 "const": "document_expiry_date"
@@ -2814,40 +3355,34 @@
                 "const": "net_worth_above_100k"
               },
               {
-                "const": "total_liabilities"
-              },
-              {
                 "const": "net_worth_total"
-              },
-              {
-                "const": "tradfi_balance"
-              },
-              {
-                "const": "onchain_balance"
-              },
-              {
-                "const": "cex_balance"
-              },
-              {
-                "const": "investment_account_balance"
-              },
-              {
-                "const": "retirement_account_balance"
-              },
-              {
-                "const": "credit_card_balance"
               },
               {
                 "const": "bank_balance_total"
               },
               {
-                "const": "trading_frequency_score"
-              },
-              {
-                "const": "verified_income"
-              },
-              {
                 "const": "loan_balance_total"
+              },
+              {
+                "const": "google_connected"
+              },
+              {
+                "const": "linkedin_connected"
+              },
+              {
+                "const": "facebook_connected"
+              },
+              {
+                "const": "twitter_connected"
+              },
+              {
+                "const": "discord_connected"
+              },
+              {
+                "const": "github_connected"
+              },
+              {
+                "const": "telegram_connected"
               },
               {
                 "const": "palm_verified"

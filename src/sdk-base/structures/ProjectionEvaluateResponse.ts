@@ -9,7 +9,7 @@ export type ProjectionEvaluateResponse = {
   /**
    * Extracted data from the projection query.
    */
-  data: Recordstringunknown;
+  data: Recordstringunknown.o1;
 
   /**
    * Timestamp when the query was evaluated.
