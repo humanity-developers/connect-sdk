@@ -54,6 +54,18 @@ export namespace token {
         refresh_token: string;
         client_id: string;
         scope?: undefined | string;
+      }
+    | {
+        /**
+         * RFC 7523 JWT Bearer Grant.
+         * Exchange a Cognito JWT (id_token or access_token) for a Humanity OAuth token.
+         * Requires COGNITO_ENABLED=true on the server.
+         * Requires the user to have an existing active HP authorization for the client.
+         */
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer";
+        /** The Cognito JWT to exchange (id_token or access_token) */
+        assertion: string;
+        client_id: string;
       };
   export type Output = TokenResponse;
 
