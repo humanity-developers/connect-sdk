@@ -115,6 +115,26 @@ export interface RefreshTokenOptions {
   clientId?: string;
 }
 
+export interface JwtBearerGrantOptions {
+  /**
+   * The Cognito JWT to exchange — use the Cognito **id_token** (preferred) or
+   * **access_token**. The server verifies the signature against Cognito's JWKS.
+   *
+   * In AWS Amplify v6:
+   * ```ts
+   * import { fetchAuthSession } from 'aws-amplify/auth';
+   * const { tokens } = await fetchAuthSession();
+   * const cognitoToken = tokens?.idToken?.toString();
+   * ```
+   */
+  cognitoToken: string;
+  /**
+   * Override the client_id. Defaults to the `clientId` passed to the SDK constructor.
+   * Useful for multi-tenant apps where a single SDK instance serves multiple client IDs.
+   */
+  clientId?: string;
+}
+
 export interface PollCredentialUpdatesOptions {
   accessToken: string;
   updatedSince?: string | Date;
@@ -322,6 +342,51 @@ export class HumanitySDK {
     );
     return this.mapTokenResponse(data, rateLimit);
   }
+  /**
+   * Exchange a Cognito JWT for a Humanity OAuth access token using the
+   * RFC 7523 JWT Bearer Grant (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
+   *
+   * ## Prerequisites
+   * - The Humanity API server must have `COGNITO_ENABLED=true`.
+   * - The user must have completed the Humanity consent flow at least once,
+   *   creating an active authorization for this `client_id`.
+   *
+   * ## Usage
+   * ```ts
+   * // AWS Amplify v6
+   * import { fetchAuthSession } from 'aws-amplify/auth';
+   * const { tokens } = await fetchAuthSession();
+   * const cognitoToken = tokens?.idToken?.toString() ?? '';
+   *
+   * const humanity = await sdk.exchangeCognitoToken({ cognitoToken });
+   * console.log(humanity.accessToken);
+   *
+   * // Then verify presets as usual:
+   * const result = await sdk.verifyPreset({
+   *   accessToken: humanity.accessToken,
+   *   preset: 'isHuman',
+   * });
+   * ```
+   *
+   * @throws {HumanityError} `unsupported_grant_type` — Cognito integration is disabled on the server.
+   * @throws {HumanityError} `invalid_grant` — Cognito token is invalid, expired, or no active HP authorization found.
+   */
+  async exchangeCognitoToken(options: JwtBearerGrantOptions): Promise<TokenResult> {
+    if (!options.cognitoToken) {
+      throw new Error('HumanitySDK.exchangeCognitoToken requires a cognitoToken');
+    }
+    const connection = this.connectionFactory.createRootConnection();
+    const body: OauthTokenRequest = {
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: options.cognitoToken,
+      client_id: options.clientId ?? this.config.clientId,
+    };
+    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+      api.functional.oauth.token(conn, body),
+    );
+    return this.mapTokenResponse(data, rateLimit);
+  }
+
   static generateState(length = 32): string {
     return generateCodeVerifier(Math.max(length, 43));
   }

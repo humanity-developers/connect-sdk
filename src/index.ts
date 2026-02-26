@@ -12,6 +12,7 @@ export {
   type VerifyPresetOptions,
   type PollCredentialUpdatesOptions,
   type PollAuthorizationUpdatesOptions,
+  type JwtBearerGrantOptions,
   type ClientUserTokenOptions,
   type ClientUserTokenResult,
   // Query Engine types
