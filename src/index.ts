@@ -14,6 +14,16 @@ export {
   type PollAuthorizationUpdatesOptions,
   type ClientUserTokenOptions,
   type ClientUserTokenResult,
+  // Memberships
+  type GetMembershipsOptions,
+  type MembershipsResult,
+  type MembershipsResponse,
+  type MembershipsSummary,
+  type BaseMembership,
+  type NormalizedTier,
+  type PointsLabel,
+  // Cognito JWT Bearer Grant
+  type ExchangeCognitoTokenOptions,
   // Query Engine types
   type Query,
   type QueryEvaluateOptions,

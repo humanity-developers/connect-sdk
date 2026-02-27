@@ -6,8 +6,8 @@ export type AuthorizeQuery = {
   response_type: 'code';
   scope: string;
   state?: string;
-  code_challenge: string;
-  code_challenge_method: 'S256';
+  code_challenge?: string;
+  code_challenge_method?: 'S256';
 };
 
 export type TokenRequest = {
@@ -15,7 +15,7 @@ export type TokenRequest = {
   code: string;
   redirect_uri: string;
   client_id: string;
-  code_verifier: string;
+  code_verifier?: string;
 };
 
 export type TokenResponse = {

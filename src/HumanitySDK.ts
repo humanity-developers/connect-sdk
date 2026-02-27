@@ -17,9 +17,18 @@ import type { QueryEvaluateRequest as SdkQueryEvaluateRequest } from '@structure
 import type { PredicateEvaluateResponse as SdkPredicateEvaluateResponse } from '@structures/PredicateEvaluateResponse';
 import type { ProjectionEvaluateResponse as SdkProjectionEvaluateResponse } from '@structures/ProjectionEvaluateResponse';
 import type { CredentialsQuery as StatusCredentialsQuery, CredentialsResponse as StatusCredentialsResponse } from '@utils/ts-types/status';
+import type { TokenRequest as OauthTokenRequest } from '@structures/TokenRequest';
 
-// TokenRequest is inlined by nestia as a discriminated union in oauth.token.Body
-type OauthTokenRequest = api.functional.oauth.token.Body;
+// Memberships Types (re-exported from contracts)
+export type {
+  NormalizedTier,
+  PointsLabel,
+  BaseMembership,
+  MembershipsSummary,
+  MembershipsResponse,
+} from '@contracts/memberships';
+
+import type { MembershipsResponse } from '@contracts/memberships';
 import { PresetRegistry, type DeveloperPresetKey } from './adapters/preset-registry';
 import { PresetsAdapter, type PresetBatchResult, type PresetCheckResult } from './adapters/presets.adapter';
 import {
@@ -41,7 +50,12 @@ type HeadersLike = {
 
 export interface HumanitySdkConfig {
   clientId: string;
-  redirectUri: string;
+  /**
+   * Redirect URI for the OAuth authorization flow.
+   * Required for `buildAuthUrl` and `exchangeCodeForToken`.
+   * Not needed for server-side-only flows like `exchangeCognitoToken` or `getClientUserToken`.
+   */
+  redirectUri?: string;
   clientSecret?: string;
   environment?: EnvironmentName | string;
   baseUrl?: string;
@@ -207,6 +221,31 @@ export interface ClientUserTokenResult {
   rateLimit?: RateLimitInfo;
 }
 
+/**
+ * Options for getMemberships().
+ */
+export interface GetMembershipsOptions {
+  accessToken: string;
+}
+
+/**
+ * Result from getMemberships() including rate limit info.
+ */
+export interface MembershipsResult extends MembershipsResponse {
+  rateLimit?: RateLimitInfo;
+}
+
+/**
+ * Options for exchanging a Cognito JWT for a Humanity access token
+ * via the RFC 7523 JWT Bearer Grant.
+ */
+export interface ExchangeCognitoTokenOptions {
+  /** The Cognito id_token JWT to exchange */
+  assertion: string;
+  /** Override the client_id (defaults to the SDK's configured clientId) */
+  clientId?: string;
+}
+
 export class HumanitySDK {
   private static readonly environments = new EnvironmentRegistry();
   private static readonly configurationCacheTtlMs = 60 * 60 * 1000;
@@ -225,7 +264,7 @@ export class HumanitySDK {
 
   constructor(config: HumanitySdkConfig) {
     if (!config.clientId) throw new Error('HumanitySDK requires a clientId');
-    if (!config.redirectUri) throw new Error('HumanitySDK requires a redirectUri');
+    // redirectUri is optional — only required for buildAuthUrl and exchangeCodeForToken
 
     this.config = config;
     this.environment = HumanitySDK.resolveEnvironment(config);
@@ -243,6 +282,9 @@ export class HumanitySDK {
   buildAuthUrl(options: AuthorizationUrlOptions): AuthorizationUrlResult {
     if (!options?.scopes?.length) {
       throw new Error('At least one scope is required to build an authorization URL');
+    }
+    if (!this.config.redirectUri) {
+      throw new Error('HumanitySDK.buildAuthUrl requires redirectUri to be configured');
     }
 
     const endpoints = this.getOauthEndpoints();
@@ -286,6 +328,9 @@ export class HumanitySDK {
     if (!options.codeVerifier) {
       throw new Error('HumanitySDK.exchangeCodeForToken requires a codeVerifier');
     }
+    if (!this.config.redirectUri) {
+      throw new Error('HumanitySDK.exchangeCodeForToken requires redirectUri to be configured');
+    }
     const connection = this.connectionFactory.createRootConnection();
     const body: OauthTokenRequest = {
       grant_type: 'authorization_code',
@@ -294,6 +339,39 @@ export class HumanitySDK {
       redirect_uri: this.config.redirectUri,
       client_id: this.config.clientId,
     };
+    const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+      api.functional.oauth.token(conn, body),
+    );
+    return this.mapTokenResponse(data, rateLimit);
+  }
+
+  /**
+   * Exchange a Cognito JWT (id_token) for a Humanity access token using the
+   * RFC 7523 JWT Bearer Grant (`urn:ietf:params:oauth:grant-type:jwt-bearer`).
+   *
+   * **Prerequisites:**
+   * 1. The application must have `cognitoRegion`, `cognitoUserPoolId`, and
+   *    `cognitoClientId` configured (via the Developer Dashboard or API).
+   * 2. The user must have completed the Humanity OAuth consent flow at least
+   *    once so an active authorization exists.
+   *
+   * @example
+   * ```typescript
+   * const sdk = new HumanitySDK({ clientId: 'app_xxx' });
+   * const result = await sdk.exchangeCognitoToken({ assertion: cognitoIdToken });
+   * console.log(result.accessToken);
+   * ```
+   */
+  async exchangeCognitoToken(options: ExchangeCognitoTokenOptions): Promise<TokenResult> {
+    if (!options.assertion) {
+      throw new Error('HumanitySDK.exchangeCognitoToken requires an assertion (Cognito JWT)');
+    }
+    const connection = this.connectionFactory.createRootConnection();
+    const body = {
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: options.assertion,
+      client_id: options.clientId ?? this.config.clientId,
+    } as unknown as OauthTokenRequest;
     const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
       api.functional.oauth.token(conn, body),
     );
@@ -513,6 +591,37 @@ export class HumanitySDK {
     const connection = this.connectionFactory.createHealthConnection();
     try {
       return await api.functional.ready.readiness(connection) as HealthReadinessResponse;
+    } catch (error) {
+      this.rethrowAsHumanityError(error);
+    }
+  }
+
+  // ============================================
+  // Memberships Methods
+  // ============================================
+
+  /**
+   * Get all loyalty program memberships for the authenticated user.
+   *
+   * Returns memberships grouped by category (airlines, hotels, casinos)
+   * with normalized tier levels and unified points values.
+   *
+   * @example
+   * const memberships = await sdk.getMemberships({ accessToken: 'user_access_token' });
+   * console.log(memberships.airlines[0].tier);      // 'diamond'
+   * console.log(memberships.hotels[0].points);       // 400000
+   * console.log(memberships.summary.totalPrograms);  // 5
+   */
+  async getMemberships(options: GetMembershipsOptions): Promise<MembershipsResult> {
+    if (!options.accessToken) {
+      throw new Error('HumanitySDK.getMemberships requires an accessToken');
+    }
+    const connection = this.connectionFactory.createCoreConnection(options.accessToken);
+    try {
+      const { data, rateLimit } = await this.executeWithRateLimit(connection, (conn) =>
+        api.functional.memberships.getMemberships(conn),
+      );
+      return rateLimit ? { ...data, rateLimit } : data;
     } catch (error) {
       this.rethrowAsHumanityError(error);
     }
