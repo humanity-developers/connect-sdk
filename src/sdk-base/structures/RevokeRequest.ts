@@ -3,10 +3,10 @@ export type RevokeRequest = {
   tokens?: undefined | string[];
   token_type_hint?:
     | undefined
-    | "authorization"
     | "refresh_token"
+    | "authorization"
     | "access_token";
   authorization_id?: undefined | string;
-  cascade?: undefined | "0" | "true" | "false" | "1" | boolean;
+  cascade?: undefined | "true" | "false" | "1" | "0" | boolean;
   client_id?: undefined | string;
 };

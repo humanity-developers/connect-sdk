@@ -9,7 +9,6 @@ export type PredicatePolicy = {
             check: {
               claim: string;
               operator:
-                | "startsWith"
                 | "=="
                 | "!="
                 | ">"
@@ -20,6 +19,7 @@ export type PredicatePolicy = {
                 | "notIn"
                 | "contains"
                 | "isDefined"
+                | "startsWith"
                 | "matchRegex";
               value?: any | undefined;
             };
@@ -35,7 +35,6 @@ export type PredicatePolicy = {
             check: {
               claim: string;
               operator:
-                | "startsWith"
                 | "=="
                 | "!="
                 | ">"
@@ -46,6 +45,7 @@ export type PredicatePolicy = {
                 | "notIn"
                 | "contains"
                 | "isDefined"
+                | "startsWith"
                 | "matchRegex";
               value?: any | undefined;
             };
@@ -60,7 +60,6 @@ export type PredicatePolicy = {
         check: {
           claim: string;
           operator:
-            | "startsWith"
             | "=="
             | "!="
             | ">"
@@ -71,6 +70,7 @@ export type PredicatePolicy = {
             | "notIn"
             | "contains"
             | "isDefined"
+            | "startsWith"
             | "matchRegex";
           value?: any | undefined;
         };

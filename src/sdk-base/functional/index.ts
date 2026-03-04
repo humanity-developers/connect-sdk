@@ -5,6 +5,7 @@
  */
 //================================================================
 export * as oauth from "./oauth/index";
+export * as memberships from "./memberships/index";
 export * as v2 from "./v2/index";
 export * as _well_known from "./_well_known/index";
 export * as health from "./health/index";

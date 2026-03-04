@@ -1,5 +1,5 @@
 export type AuthorizationsQuery = {
-  status?: undefined | "revoked" | "active";
+  status?: undefined | "active" | "revoked";
   updated_since?: undefined | string;
   limit?: undefined | number;
 };

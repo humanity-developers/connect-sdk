@@ -14,7 +14,6 @@ export type QueryEvaluateRequest = {
         check: {
           claim: string;
           operator:
-            | "startsWith"
             | "=="
             | "!="
             | ">"
@@ -25,6 +24,7 @@ export type QueryEvaluateRequest = {
             | "notIn"
             | "contains"
             | "isDefined"
+            | "startsWith"
             | "matchRegex";
           value?: any | undefined;
         };
@@ -35,7 +35,7 @@ export type QueryEvaluateRequest = {
     | {
         projections: {
           claim: string;
-          lens: "at" | "pluck" | "pick";
+          lens: "pluck" | "pick" | "at";
         }[];
       };
 };
