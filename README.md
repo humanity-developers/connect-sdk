@@ -1,6 +1,28 @@
-# Humanity Connect SDK
+<p align="center">
+  <img src="https://cdn.humanity.org/humanity-protocol-logo-devs.png" width="576" alt="Humanity Protocol">
+</p>
 
-The official TypeScript SDK for integrating with Humanity Protocol. Verify real humans, check age requirements, and validate investor accreditation with privacy-preserving credentials.
+<h1 align="center">@humanity-org/connect-sdk</h1>
+
+<p align="center">
+  The official TypeScript SDK for integrating with Humanity Protocol. Verify real humans, check age requirements, and validate investor accreditation with privacy-preserving credentials.
+</p>
+
+<p align="center">
+  <a href="https://docs.humanity.org"><img src="https://img.shields.io/badge/docs-humanity.org-blue.svg" alt="Documentation"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <a href="https://discord.gg/humanity"><img src="https://img.shields.io/badge/discord-join-7289da.svg" alt="Discord"></a>
+</p>
+
+<div align="center">
+
+[![npm](https://img.shields.io/npm/v/@humanity-org/connect-sdk)](https://www.npmjs.com/package/@humanity-org/connect-sdk)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/Node-18+-purple.svg)](https://nodejs.org)
+
+</div>
+
+---
 
 ## What is Humanity Protocol?
 
